@@ -1,4 +1,4 @@
 package cat.itacademy.s04.t02.n02.fruit.dto;
 
-public record FruitResponseDTO(Long id, String name, Integer weightInKilos) {
+public record FruitResponseDTO(Long id, String name, Integer weightInKilos, Long providerId) {
 }
