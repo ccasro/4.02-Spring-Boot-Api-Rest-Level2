@@ -35,4 +35,10 @@ public class ProviderController {
         ProviderResponseDTO response = providerService.updateProvider(id, request);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProvider(@PathVariable Long id) {
+        providerService.deleteProvider(id);
+        return ResponseEntity.noContent().build();
+    }
 }
