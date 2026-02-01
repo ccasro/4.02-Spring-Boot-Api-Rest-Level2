@@ -1,7 +1,9 @@
 package cat.itacademy.s04.t02.n02.fruit.controllers;
 
 import cat.itacademy.s04.t02.n02.fruit.dto.ProviderRequestDTO;
+import cat.itacademy.s04.t02.n02.fruit.model.Fruit;
 import cat.itacademy.s04.t02.n02.fruit.model.Provider;
+import cat.itacademy.s04.t02.n02.fruit.repository.FruitRepository;
 import cat.itacademy.s04.t02.n02.fruit.repository.ProviderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -13,8 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,6 +34,9 @@ public class ProviderControllerTest {
 
     @Autowired
     private ProviderRepository repository;
+
+    @Autowired
+    private FruitRepository fruitRepository;
 
     @Test
     void shouldCreateProviderWhenDataIsValid() throws Exception {
@@ -111,6 +116,32 @@ public class ProviderControllerTest {
         mockMvc.perform(put("/providers/" + p2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(update)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldDeleteProviderWhenNoFruitsAssociated() throws Exception {
+        Provider saved = repository.save(new Provider("Provider-A", "Spain"));
+
+        mockMvc.perform(delete("/providers/" + saved.getId()))
+                .andExpect(status().isNoContent());
+
+        assertFalse(repository.findById(saved.getId()).isPresent());
+    }
+
+    @Test
+    void shouldReturn404WhenDeletingNonExistingProvider() throws Exception {
+        mockMvc.perform(delete("/providers/999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn409WhenDeletingProviderWithAssociatedFruits() throws Exception {
+        Provider provider = repository.save(new Provider("Provider-WithFruits", "Spain"));
+
+        fruitRepository.save(new Fruit("Apple", 3, provider));
+
+        mockMvc.perform(delete("/providers/" + provider.getId()))
                 .andExpect(status().isConflict());
     }
 }
