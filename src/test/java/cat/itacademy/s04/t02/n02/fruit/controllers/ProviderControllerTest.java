@@ -12,7 +12,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
@@ -58,6 +61,56 @@ public class ProviderControllerTest {
         mockMvc.perform(post("/providers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldUpdateProviderWhenIdExistsAndDataIsValid() throws Exception {
+        Provider saved = repository.save(new Provider("Provider-A", "Spain"));
+
+        ProviderRequestDTO update = new ProviderRequestDTO("Provider-A-Updated", "France");
+
+        mockMvc.perform(put("/providers/" + saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(update)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(saved.getId()))
+                .andExpect(jsonPath("$.name").value("Provider-A-Updated"))
+                .andExpect(jsonPath("$.country").value("France"));
+    }
+
+    @Test
+    void shouldReturn404WhenUpdatingNonExistingProvider() throws Exception {
+        ProviderRequestDTO update = new ProviderRequestDTO("NewName", "Spain");
+
+        mockMvc.perform(put("/providers/999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(update)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenUpdatingProviderWithInvalidData() throws Exception {
+        Provider saved = repository.save(new Provider("Provider-A", "Spain"));
+
+        ProviderRequestDTO update = new ProviderRequestDTO("", "France");
+
+        mockMvc.perform(put("/providers/" + saved.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn409WhenUpdatingProviderWithDuplicatedName() throws Exception {
+        Provider p1 = repository.save(new Provider("Provider-A", "Spain"));
+        Provider p2 = repository.save(new Provider("Provider-B", "France"));
+
+        ProviderRequestDTO update = new ProviderRequestDTO("Provider-A", "Italy");
+
+        mockMvc.perform(put("/providers/" + p2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isConflict());
     }
 }
