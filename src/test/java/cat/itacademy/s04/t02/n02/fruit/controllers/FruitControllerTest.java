@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -97,6 +99,32 @@ public class FruitControllerTest {
     @Test
     void shouldReturn404WhenFruitDoesNotExist() throws Exception {
         mockMvc.perform(get("/fruits/222"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnFruitsFilteredByProviderId() throws Exception {
+        Provider p1 = saveProvider();
+        Provider p2 = saveProvider();
+
+        saveFruit("Apple", 3, p1);
+        saveFruit("Banana", 5, p1);
+        saveFruit("Orange", 4, p2);
+
+        mockMvc.perform(get("/fruits")
+                        .param("providerId", String.valueOf(p1.getId()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].name", containsInAnyOrder("Apple", "Banana")))
+                .andExpect(jsonPath("$[*].providerId", containsInAnyOrder(p1.getId().intValue(), p1.getId().intValue())));
+    }
+
+    @Test
+    void shouldReturn404WhenFilteringByNonExistingProvider() throws Exception {
+        mockMvc.perform(get("/fruits")
+                        .param("providerId", "999")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
 
@@ -186,6 +214,10 @@ public class FruitControllerTest {
 
     private Fruit saveFruit(String name, int weightInKilos) {
         Provider provider = saveProvider();
+        return repository.save(new Fruit(name, weightInKilos, provider));
+    }
+
+    private Fruit saveFruit(String name, int weightInKilos, Provider provider){
         return repository.save(new Fruit(name, weightInKilos, provider));
     }
 }
