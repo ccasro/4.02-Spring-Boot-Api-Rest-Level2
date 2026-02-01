@@ -21,9 +21,14 @@ public class Fruit {
     @Column(nullable = false)
     private int weightInKilos;
 
-    public Fruit(String name, int weightInKilos) {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "provider_id", nullable = false)
+    private Provider provider;
+
+    public Fruit(String name, int weightInKilos, Provider provider) {
         this.name = name;
         this.weightInKilos = weightInKilos;
+        this.provider = provider;
     }
 
 }
