@@ -9,4 +9,5 @@ public interface ProviderService {
     ProviderResponseDTO createProvider(ProviderRequestDTO dto);
     List<ProviderResponseDTO> getAllProviders();
     ProviderResponseDTO updateProvider(Long id, ProviderRequestDTO dto);
+    void deleteProvider(Long id);
 }

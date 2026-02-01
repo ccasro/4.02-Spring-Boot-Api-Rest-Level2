@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface FruitRepository extends JpaRepository<Fruit, Long> {
     List<Fruit> findByProviderId(Long providerId);
+    boolean existsByProviderId(Long providerId);
 }
