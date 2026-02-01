@@ -6,19 +6,19 @@ import cat.itacademy.s04.t02.n02.fruit.exception.ConflictException;
 import cat.itacademy.s04.t02.n02.fruit.exception.ProviderNotFoundException;
 import cat.itacademy.s04.t02.n02.fruit.mapper.ProviderMapper;
 import cat.itacademy.s04.t02.n02.fruit.model.Provider;
+import cat.itacademy.s04.t02.n02.fruit.repository.FruitRepository;
 import cat.itacademy.s04.t02.n02.fruit.repository.ProviderRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 public class ProviderServiceImpl implements ProviderService {
 
     private final ProviderRepository providerRepository;
-
-    public ProviderServiceImpl(ProviderRepository providerRepository){
-        this.providerRepository = providerRepository;
-    }
+    private final FruitRepository fruitRepository;
 
     @Override
     public ProviderResponseDTO createProvider(ProviderRequestDTO dto){
@@ -50,5 +50,17 @@ public class ProviderServiceImpl implements ProviderService {
 
         Provider saved = providerRepository.save(provider);
         return ProviderMapper.toResponseDTO(saved);
+    }
+
+    @Override
+    public void deleteProvider(Long id) {
+        Provider provider = providerRepository.findById(id)
+                .orElseThrow(() -> new ProviderNotFoundException(id));
+
+        if (fruitRepository.existsByProviderId(id)) {
+            throw new ConflictException("Provider with id: " + id + " cannot be deleted because it has associated fruits");
+        }
+
+        providerRepository.delete(provider);
     }
 }
