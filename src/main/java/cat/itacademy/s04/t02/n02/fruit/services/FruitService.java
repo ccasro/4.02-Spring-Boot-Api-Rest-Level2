@@ -37,6 +37,17 @@ public class FruitService {
         return FruitMapper.toResponseDTO(fruit);
     }
 
+    public List<FruitResponseDTO> getFruitsByProviderId(Long providerId) {
+        if (!providerRepository.existsById(providerId)) {
+            throw new ProviderNotFoundException(providerId);
+        }
+
+        return repository.findByProviderId(providerId)
+                .stream()
+                .map(FruitMapper::toResponseDTO)
+                .toList();
+    }
+
     public List<FruitResponseDTO> getAllFruits() {
         return repository.findAll()
                 .stream()
