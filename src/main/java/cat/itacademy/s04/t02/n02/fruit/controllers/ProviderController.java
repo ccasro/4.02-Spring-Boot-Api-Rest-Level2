@@ -29,4 +29,10 @@ public class ProviderController {
         List<ProviderResponseDTO> response = providerService.getAllProviders();
         return ResponseEntity.ok(response);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ProviderResponseDTO> updateProvider(@PathVariable Long id, @Valid @RequestBody ProviderRequestDTO request) {
+        ProviderResponseDTO response = providerService.updateProvider(id, request);
+        return ResponseEntity.ok(response);
+    }
 }
