@@ -3,7 +3,9 @@ package cat.itacademy.s04.t02.n02.fruit.controllers;
 
 import cat.itacademy.s04.t02.n02.fruit.dto.FruitRequestDTO;
 import cat.itacademy.s04.t02.n02.fruit.model.Fruit;
+import cat.itacademy.s04.t02.n02.fruit.model.Provider;
 import cat.itacademy.s04.t02.n02.fruit.repository.FruitRepository;
+import cat.itacademy.s04.t02.n02.fruit.repository.ProviderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -33,9 +37,13 @@ public class FruitControllerTest {
     @Autowired
     private FruitRepository repository;
 
+    @Autowired
+    private ProviderRepository providerRepository;
+
     @Test
     void shouldCreateFruitWhenDataIsValid() throws Exception {
-        FruitRequestDTO request = new FruitRequestDTO("Banana", 5);
+        Provider provider = saveProvider();
+        FruitRequestDTO request = new FruitRequestDTO("Banana", 5, provider.getId());
 
         mockMvc.perform(post("/fruits")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -45,7 +53,8 @@ public class FruitControllerTest {
 
     @Test
     void shouldReturnBadRequestWhenDataIsInvalid() throws Exception {
-        FruitRequestDTO request = new FruitRequestDTO("",-1);
+        Provider provider = saveProvider();
+        FruitRequestDTO request = new FruitRequestDTO("",-1,provider.getId());
 
         mockMvc.perform(post("/fruits")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -54,14 +63,35 @@ public class FruitControllerTest {
     }
 
     @Test
+    void shouldReturnBadRequestWhenProviderIdIsMissing() throws Exception {
+        FruitRequestDTO request = new FruitRequestDTO("Banana", 5, null);
+
+        mockMvc.perform(post("/fruits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenProviderDoesNotExistOnCreate() throws Exception {
+        FruitRequestDTO request = new FruitRequestDTO("Banana", 5, 999999L);
+
+        mockMvc.perform(post("/fruits")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void shouldReturnFruitWhenIdExists() throws Exception {
-        Fruit saved = repository.save(new Fruit("Orange", 9));
+        Fruit saved = saveFruit("Orange", 9);
 
         mockMvc.perform(get("/fruits/" + saved.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(saved.getId()))
                 .andExpect(jsonPath("$.name").value(saved.getName()))
-                .andExpect(jsonPath("$.weightInKilos").value(saved.getWeightInKilos()));
+                .andExpect(jsonPath("$.weightInKilos").value(saved.getWeightInKilos()))
+                .andExpect(jsonPath("$.providerId").value(saved.getProvider().getId()));
     }
 
     @Test
@@ -72,8 +102,8 @@ public class FruitControllerTest {
 
     @Test
     void shouldReturnAllFruits() throws Exception {
-        repository.save(new Fruit("Banana", 3));
-        repository.save(new Fruit("Lemon", 4));
+        saveFruit("Banana", 3);
+        saveFruit("Lemon", 4);
 
         mockMvc.perform(get("/fruits")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -96,8 +126,9 @@ public class FruitControllerTest {
 
     @Test
     void shouldUpdateFruitWhenDataIsValid() throws Exception {
-        Fruit saved = repository.save(new Fruit("Apple", 3));
-        FruitRequestDTO update = new FruitRequestDTO("Green Apple", 4);
+        Fruit saved = saveFruit("Apple", 3);
+        Provider provider = saveProvider();
+        FruitRequestDTO update = new FruitRequestDTO("Green Apple", 4, provider.getId());
 
         mockMvc.perform(put("/fruits/" + saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,7 +140,8 @@ public class FruitControllerTest {
 
     @Test
     void shouldReturn404WhenUpdatingNonExistentFruit() throws Exception {
-        FruitRequestDTO update = new FruitRequestDTO("Kiwi", 1);
+        Provider provider = saveProvider();
+        FruitRequestDTO update = new FruitRequestDTO("Kiwi", 1, provider.getId());
 
         mockMvc.perform(put("/fruits/900")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -119,8 +151,10 @@ public class FruitControllerTest {
 
     @Test
     void shouldReturn400WhenUpdatingWithInvalidData() throws Exception {
-        Fruit saved = repository.save(new Fruit("Apple", 3));
-        FruitRequestDTO update = new FruitRequestDTO("", -1);
+        Fruit saved = saveFruit("Apple", 3);
+
+        Provider provider = saveProvider();
+        FruitRequestDTO update = new FruitRequestDTO("", -1, provider.getId());
 
         mockMvc.perform(put("/fruits/" + saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -130,7 +164,7 @@ public class FruitControllerTest {
 
     @Test
     void shouldDeleteFruitWhenIdExists() throws Exception {
-        Fruit saved = repository.save(new Fruit("Apple", 3));
+        Fruit saved = saveFruit("Apple", 3);
 
         mockMvc.perform(delete("/fruits/" + saved.getId()))
                 .andExpect(status().isNoContent());
@@ -142,6 +176,17 @@ public class FruitControllerTest {
     void shouldReturn404WhenDeletingNonExistentFruit() throws Exception {
         mockMvc.perform(delete("/fruits/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    //HELPERS
+
+    private Provider saveProvider() {
+        return providerRepository.save(new Provider("Provider-" + UUID.randomUUID(), "Spain"));
+    }
+
+    private Fruit saveFruit(String name, int weightInKilos) {
+        Provider provider = saveProvider();
+        return repository.save(new Fruit(name, weightInKilos, provider));
     }
 }
 
